@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<meta charset="utf-8" emacsmode="-*- markdown -*">
+**go-pixiv-proxy**
+
+# 简介
+
+一个简单易懂的p站图片代理！
+
+# 使用说明
+
+## 启动参数
+
+`-h`: host
+
+`-p`: 端口
+
+`-d`: 指定域名（用于主页展示示例图片可以不填）
+
+## 代理图片
+
+提供了两种代理的方法
+
+### 替换 `i.piximg.net` 为你的域名
+
+https://i.pximg.net/img-original/img/2022/05/21/22/35/46/98505703_p0.jpg
+
+替换为
+
+http://example.com/img-original/img/2022/05/21/22/35/46/98505703_p0.jpg
+
+### url 后接 pid
+
+http://example.com/98505703
+
+## 图片质量选择
+
+针对 **url 后接 pid** 的使用方法，提供了图片质量选择的参数
+
+使用方法：添加参数 `t`
+
+支持
+
+- original
+- regular
+- small
+- thumb
+- mini
+
+例子: http://example.com/98505703?t=original
+
+{image-examples}
+
+## 代理 api
+
+http://example.com/api/pid
+
+## 其他示范用例
+
+```
+1. http://example.com/$path
+- http://example.com/img-original/img/0000/00/00/00/00/00/12345678_p0.png
+
+2. http://example.com/$pid[/$p][?img_type=original|regular|small|thumb|mini]
+- http://example.com/12345678 (p0)
+- http://example.com/12345678/0 (p0)
+- http://example.com/12345678/1 (p1)
+- http://example.com/12345678?t=small (small image)
+```
+
+
+<style class="fallback">
+body {
+    visibility: hidden;
+    /*white-space: pre;*/
+    font-family: monospace
+}
+</style>
+<script
+        src="https://morgan3d.github.io/markdeep/latest/markdeep.min.js?"
+        charset="utf-8"></script>
+<script>window.alreadyProcessedMarkdeep || (document.body.style.visibility = "visible")</script>
+</html>
