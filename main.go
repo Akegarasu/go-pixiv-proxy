@@ -1,45 +1,33 @@
 package main
 
 import (
+	_ "embed"
 	"flag"
 	"fmt"
-	"github.com/gin-gonic/gin"
 	log "github.com/sirupsen/logrus"
+	easy "github.com/t-tomalak/logrus-easy-formatter"
 	"github.com/tidwall/gjson"
 	"io"
-	"io/ioutil"
 	"net/http"
-	"net/url"
 	"strconv"
 	"strings"
 )
 
 var (
-	host    string
-	port    string
-	headers = map[string]string{
-		"Referer":    "https://www.pixiv.net",
-		"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.113 Safari/537.36",
-	}
-	client = &http.Client{
-		Transport: &http.Transport{
-			Proxy: func(request *http.Request) (u *url.URL, e error) {
-				return http.ProxyFromEnvironment(request)
-			},
-		},
-	}
-	directTypes = []string{"img-original", "img-master", "c"}
-	imgTypes    = []string{"original", "regular", "small", "thumb", "mini"}
-	helpMsg     = `Usage:
+	host   string
+	port   string
+	domain string
+	//go:embed index.html
+	indexHtml     string
+	directTypes   = []string{"img-original", "img-master", "c"}
+	imgTypes      = []string{"original", "regular", "small", "thumb", "mini"}
+	docExampleImg = `![regular](http://example.com/98505703?t=regular)
 
-1. http://example.com/$path
-   - http://example.com/img-original/img/0000/00/00/00/00/00/12345678_p0.png
+![small](http://example.com/98505703?t=small)
 
-2. http://example.com/$pid[/$p][?img_type=original|regular|small|thumb|mini]
-   - http://example.com/12345678    (p0)
-   - http://example.com/12345678/0  (p0)
-   - http://example.com/12345678/1  (p1)
-   - http://example.com/12345678?t=small (small image)`
+![thumb](http://example.com/98505703?t=thumb)
+
+![mini](http://example.com/98505703?t=mini)`
 )
 
 type Illust struct {
@@ -47,99 +35,80 @@ type Illust struct {
 	urls    map[string]gjson.Result
 }
 
-func httpGetReadCloser(u string) (io.ReadCloser, error) {
-	req, err := http.NewRequest("GET", u, nil)
-	if err != nil {
-		return nil, err
-	}
-	for k, v := range headers {
-		req.Header.Set(k, v)
-	}
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	return resp.Body, nil
-}
-
-func handlePixivProxy(c *gin.Context) {
+func handlePixivProxy(rw http.ResponseWriter, req *http.Request) {
 	var err error
 	var realUrl string
-	param := c.Param("pixiv")
-	if param == "/" {
-		c.String(200, helpMsg)
+	c := &Context{
+		rw:  rw,
+		req: req,
+	}
+	path := req.URL.Path
+	log.Info(req.Method, " ", req.URL.String())
+	spl := strings.Split(path, "/")[1:]
+	switch spl[0] {
+	case "":
+		c.String(200, indexHtml)
+		return
+	case "favicon.ico":
+		c.rw.WriteHeader(404)
+		return
+	case "api":
+		handleIllustInfo(c)
 		return
 	}
-	imgType := c.DefaultQuery("t", "original")
-	splitQuery := strings.Split(param, "/")[1:]
+	imgType := req.URL.Query().Get("t")
+	if imgType == "" {
+		imgType = "original"
+	}
 	if !in(imgTypes, imgType) {
 		c.String(400, "invalid query")
 		return
 	}
-	if in(directTypes, splitQuery[0]) {
-		realUrl = "https://i.pximg.net/" + param[1:]
+	if in(directTypes, spl[0]) {
+		realUrl = "https://i.pximg.net" + path
 	} else {
-		if _, err = strconv.Atoi(splitQuery[0]); err != nil {
+		if _, err = strconv.Atoi(spl[0]); err != nil {
 			c.String(400, "invalid query")
 			return
+		}
+		illust, err := getIllust(spl[0])
+		if err != nil {
+			c.String(400, "pixiv api error")
+			return
+		}
+		if r, ok := illust.urls[imgType]; ok {
+			realUrl = r.String()
 		} else {
-			illust, err := getIllust(splitQuery[0])
-			if err != nil {
-				c.String(400, "pixiv api error")
-				return
-			}
-			if r, ok := illust.urls[imgType]; ok {
-				realUrl = r.String()
-			} else {
-				c.String(400, "this image type not exists")
-				return
-			}
+			c.String(400, "this image type not exists")
+			return
+		}
+		if len(spl) > 1 {
+			realUrl = strings.Replace(realUrl, "_p0", "_p"+spl[1], 1)
 		}
 	}
 	rd, err := httpGetReadCloser(realUrl)
 	if err != nil {
-		c.String(400, "get pixiv image error")
+		c.String(500, "fetch pixiv image error")
 		return
 	}
 	defer rd.Close()
-	_, _ = io.Copy(c.Writer, rd)
+	_, _ = io.Copy(rw, rd)
 }
 
-func handleIllustInfo(c *gin.Context) {
-	pid := c.Param("pid")
-	if _, err := strconv.Atoi(pid[1:]); err != nil {
+func handleIllustInfo(c *Context) {
+	params := strings.Split(c.req.URL.Path, "/")
+	pid := params[len(params)-1]
+	if _, err := strconv.Atoi(pid); err != nil {
 		c.String(400, "pid invalid")
 		return
 	}
-	rd, err := httpGetReadCloser("https://www.pixiv.net/ajax/illust/" + pid[1:])
+	rd, err := httpGetReadCloser("https://www.pixiv.net/ajax/illust/" + pid)
 	if err != nil {
-		c.String(400, "get pixiv image error")
+		c.String(500, "pixiv api error")
 		return
 	}
 	defer rd.Close()
-	_, _ = io.Copy(c.Writer, rd)
-}
-
-func in(orig []string, str string) bool {
-	for _, b := range orig {
-		if b == str {
-			return true
-		}
-	}
-	return false
-}
-
-func getBytes(url string) ([]byte, error) {
-	body, err := httpGetReadCloser(url)
-	if err != nil {
-		return nil, err
-	}
-	defer body.Close()
-	b, err := ioutil.ReadAll(body)
-	if err != nil {
-		return nil, err
-	}
-	return b, nil
+	_, _ = io.Copy(c.rw, rd)
 }
 
 func getIllust(pid string) (*Illust, error) {
@@ -155,18 +124,35 @@ func getIllust(pid string) (*Illust, error) {
 	}, nil
 }
 
+func in(orig []string, str string) bool {
+	for _, b := range orig {
+		if b == str {
+			return true
+		}
+	}
+	return false
+}
+
 func init() {
 	flag.StringVar(&host, "h", "127.0.0.1", "host")
 	flag.StringVar(&port, "p", "18090", "port")
+	flag.StringVar(&domain, "d", "", "your domain")
+	log.SetFormatter(&easy.Formatter{
+		TimestampFormat: "2006-01-02 15:04:05",
+		LogFormat:       "[%lvl%][%time%]: %msg% \n",
+	})
+	log.SetLevel(log.InfoLevel)
 }
 
 func main() {
 	flag.Parse()
-	gin.SetMode(gin.ReleaseMode)
-	r := gin.Default()
-	//r.GET("/json/*pid", handleIllustInfo)
-	r.GET("/*pixiv", handlePixivProxy)
-	err := r.Run(fmt.Sprintf("%s:%s", host, port))
+	if domain != "" {
+		indexHtml = strings.ReplaceAll(indexHtml, "{image-examples}", docExampleImg)
+		indexHtml = strings.ReplaceAll(indexHtml, "http://example.com", domain)
+	}
+	http.HandleFunc("/", handlePixivProxy)
+	log.Info("started")
+	err := http.ListenAndServe(fmt.Sprintf("%s:%s", host, port), nil)
 	if err != nil {
 		log.Error("start failed: ", err)
 	}
