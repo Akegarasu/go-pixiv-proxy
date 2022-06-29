@@ -39,7 +39,18 @@ func (c *Context) String(status int, s string) {
 	c.write([]byte(s), status)
 }
 
-func httpGetReadCloser(u string) (io.ReadCloser, error) {
+func proxyHttpReq(c *Context, url string, errMsg string) {
+	resp, err := httpGet(url)
+	if err != nil {
+		c.String(500, errMsg)
+		return
+	}
+	defer resp.Body.Close()
+	copyHeader(c.rw.Header(), resp.Header)
+	_, _ = io.Copy(c.rw, resp.Body)
+}
+
+func httpGet(u string) (*http.Response, error) {
 	req, err := http.NewRequest("GET", u, nil)
 	if err != nil {
 		return nil, err
@@ -51,10 +62,18 @@ func httpGetReadCloser(u string) (io.ReadCloser, error) {
 	if err != nil {
 		return nil, err
 	}
+	return resp, nil
+}
+
+func httpGetReadCloser(u string) (io.ReadCloser, error) {
+	resp, err := httpGet(u)
+	if err != nil {
+		return nil, err
+	}
 	return resp.Body, nil
 }
 
-func getBytes(url string) ([]byte, error) {
+func httpGetBytes(url string) ([]byte, error) {
 	body, err := httpGetReadCloser(url)
 	if err != nil {
 		return nil, err
@@ -65,4 +84,12 @@ func getBytes(url string) ([]byte, error) {
 		return nil, err
 	}
 	return b, nil
+}
+
+func copyHeader(dst, src http.Header) {
+	for k, vv := range src {
+		for _, v := range vv {
+			dst.Add(k, v)
+		}
+	}
 }

@@ -7,7 +7,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	easy "github.com/t-tomalak/logrus-easy-formatter"
 	"github.com/tidwall/gjson"
-	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -86,13 +85,7 @@ func handlePixivProxy(rw http.ResponseWriter, req *http.Request) {
 			realUrl = strings.Replace(realUrl, "_p0", "_p"+spl[1], 1)
 		}
 	}
-	rd, err := httpGetReadCloser(realUrl)
-	if err != nil {
-		c.String(500, "fetch pixiv image error")
-		return
-	}
-	defer rd.Close()
-	_, _ = io.Copy(rw, rd)
+	proxyHttpReq(c, realUrl, "fetch pixiv image error")
 }
 
 func handleIllustInfo(c *Context) {
@@ -102,17 +95,11 @@ func handleIllustInfo(c *Context) {
 		c.String(400, "pid invalid")
 		return
 	}
-	rd, err := httpGetReadCloser("https://www.pixiv.net/ajax/illust/" + pid)
-	if err != nil {
-		c.String(500, "pixiv api error")
-		return
-	}
-	defer rd.Close()
-	_, _ = io.Copy(c.rw, rd)
+	proxyHttpReq(c, "https://www.pixiv.net/ajax/illust/"+pid, "pixiv api error")
 }
 
 func getIllust(pid string) (*Illust, error) {
-	b, err := getBytes("https://www.pixiv.net/ajax/illust/" + pid)
+	b, err := httpGetBytes("https://www.pixiv.net/ajax/illust/" + pid)
 	if err != nil {
 		return nil, err
 	}
