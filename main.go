@@ -18,7 +18,7 @@ var (
 	domain string
 	//go:embed index.html
 	indexHtml     string
-	directTypes   = []string{"img-original", "img-master", "c", "user-profile"}
+	directTypes   = []string{"img-original", "img-master", "c", "user-profile", "img-zip-ugoira"}
 	imgTypes      = []string{"original", "regular", "small", "thumb", "mini"}
 	docExampleImg = `![regular](http://example.com/98505703?t=regular)
 
