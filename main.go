@@ -8,6 +8,7 @@ import (
 	easy "github.com/t-tomalak/logrus-easy-formatter"
 	"github.com/tidwall/gjson"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 )
@@ -120,6 +121,18 @@ func in(orig []string, str string) bool {
 	return false
 }
 
+func checkEnv() {
+	if os.Getenv("GPP_HOST") != "" {
+		host = os.Getenv("GPP_HOST")
+	}
+	if os.Getenv("GPP_PORT") != "" {
+		port = os.Getenv("GPP_PORT")
+	}
+	if os.Getenv("GPP_DOMAIN") != "" {
+		domain = os.Getenv("GPP_DOMAIN")
+	}
+}
+
 func init() {
 	flag.StringVar(&host, "h", "127.0.0.1", "host")
 	flag.StringVar(&port, "p", "18090", "port")
@@ -133,6 +146,7 @@ func init() {
 
 func main() {
 	flag.Parse()
+	checkEnv()
 	if domain != "" {
 		indexHtml = strings.ReplaceAll(indexHtml, "{image-examples}", docExampleImg)
 		indexHtml = strings.ReplaceAll(indexHtml, "http://example.com", domain)
