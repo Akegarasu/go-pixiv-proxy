@@ -152,7 +152,7 @@ func main() {
 		indexHtml = strings.ReplaceAll(indexHtml, "http://example.com", domain)
 	}
 	http.HandleFunc("/", handlePixivProxy)
-	log.Info("started")
+	log.Infof("started: %s:%s %s", host, port, domain)
 	err := http.ListenAndServe(fmt.Sprintf("%s:%s", host, port), nil)
 	if err != nil {
 		log.Error("start failed: ", err)
