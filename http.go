@@ -39,6 +39,10 @@ func (c *Context) String(status int, s string) {
 	c.write([]byte(s), status)
 }
 
+func (c *Context) WriteHeader(statusCode int) {
+	c.rw.WriteHeader(statusCode)
+}
+
 func proxyHttpReq(c *Context, url string, errMsg string) {
 	resp, err := httpGet(url)
 	if err != nil {

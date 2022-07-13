@@ -50,7 +50,7 @@ func handlePixivProxy(rw http.ResponseWriter, req *http.Request) {
 		c.String(200, indexHtml)
 		return
 	case "favicon.ico":
-		c.rw.WriteHeader(404)
+		c.WriteHeader(404)
 		return
 	case "api":
 		handleIllustInfo(c)
