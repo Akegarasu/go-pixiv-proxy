@@ -3,7 +3,6 @@ package main
 import (
 	log "github.com/sirupsen/logrus"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 )
@@ -83,7 +82,7 @@ func httpGetBytes(url string) ([]byte, error) {
 		return nil, err
 	}
 	defer body.Close()
-	b, err := ioutil.ReadAll(body)
+	b, err := io.ReadAll(body)
 	if err != nil {
 		return nil, err
 	}
