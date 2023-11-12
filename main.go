@@ -84,6 +84,9 @@ func handlePixivProxy(rw http.ResponseWriter, req *http.Request) {
 			c.String(400, "this image type not exists")
 			return
 		}
+		if realUrl == "" {
+			c.String(400, "this image needs login, set GPP_COOKIES env.")
+		}
 		if len(spl) > 1 {
 			realUrl = strings.Replace(realUrl, "_p0", "_p"+spl[1], 1)
 		}
@@ -142,6 +145,7 @@ func init() {
 	flag.StringVar(&host, "h", "127.0.0.1", "host")
 	flag.StringVar(&port, "p", "18090", "port")
 	flag.StringVar(&domain, "d", "", "your domain")
+	flag.StringVar(&cookies, "c", "", "cookie")
 	log.SetFormatter(&easy.Formatter{
 		TimestampFormat: "2006-01-02 15:04:05",
 		LogFormat:       "[%lvl%][%time%]: %msg% \n",

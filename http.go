@@ -51,6 +51,8 @@ func proxyHttpReq(c *Context, url string, errMsg string) {
 	}
 	defer resp.Body.Close()
 	copyHeader(c.rw.Header(), resp.Header)
+	resp.Header.Del("Cookie")
+	resp.Header.Del("Set-Cookie")
 	_, _ = io.Copy(c.rw, resp.Body)
 }
 
