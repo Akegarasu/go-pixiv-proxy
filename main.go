@@ -4,19 +4,21 @@ import (
 	_ "embed"
 	"flag"
 	"fmt"
-	log "github.com/sirupsen/logrus"
-	easy "github.com/t-tomalak/logrus-easy-formatter"
-	"github.com/tidwall/gjson"
 	"net/http"
 	"os"
 	"strconv"
 	"strings"
+
+	log "github.com/sirupsen/logrus"
+	easy "github.com/t-tomalak/logrus-easy-formatter"
+	"github.com/tidwall/gjson"
 )
 
 var (
-	host   string
-	port   string
-	domain string
+	host    string
+	port    string
+	domain  string
+	cookies string
 	//go:embed index.html
 	indexHtml     string
 	directTypes   = []string{"img-original", "img-master", "c", "user-profile", "img-zip-ugoira"}
@@ -130,6 +132,9 @@ func checkEnv() {
 	}
 	if os.Getenv("GPP_DOMAIN") != "" {
 		domain = os.Getenv("GPP_DOMAIN")
+	}
+	if os.Getenv("GPP_COOKIES") != "" {
+		cookies = os.Getenv("GPP_COOKIES")
 	}
 }
 

@@ -1,10 +1,11 @@
 package main
 
 import (
-	log "github.com/sirupsen/logrus"
 	"io"
 	"net/http"
 	"net/url"
+
+	log "github.com/sirupsen/logrus"
 )
 
 var (
@@ -61,6 +62,7 @@ func httpGet(u string) (*http.Response, error) {
 	for k, v := range headers {
 		req.Header.Set(k, v)
 	}
+	req.Header.Set("Cookie", cookies)
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
